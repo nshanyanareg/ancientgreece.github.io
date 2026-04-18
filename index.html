@@ -12,6 +12,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 
     <style>
+        #app-scale {
+            position: fixed;
+            inset: 0;
+            width: calc(100vw / 0.85);
+            height: calc(100vh / 0.85);
+            transform: scale(0.85);
+            transform-origin: top left;
+            overflow: hidden;
+            background-color: var(--sand);
+        }
         .bg-image,
         #drag-thumb,
         .text-container,
@@ -229,6 +239,12 @@
         }
 
         @media (max-width: 900px) {
+            #app-scale {
+                width: 100vw;
+                height: 100vh;
+                transform: none;
+            }
+
             .git-slider-wrapper {
                 top: 35%;
                 width: 98%;
@@ -263,11 +279,12 @@
     </style>
 </head>
 <body>
+<div id="app-scale">
 
-<div id="bg-container"></div>
-<div class="overlay"></div>
+    <div id="bg-container"></div>
+    <div class="overlay"></div>
 
-<div class="header-container">
+    <div class="header-container">
     <h1 class="heading-font" id="mainHeading">Evolution of Ancient Greece</h1>
 </div>
 
@@ -742,6 +759,8 @@
     }
 
     initUI();
+    initUI();
 </script>
+</div>
 </body>
 </html>
