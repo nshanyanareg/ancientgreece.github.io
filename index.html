@@ -1,27 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ancient Greece: An Interactive Chronology</title>
-    
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 
-    <!-- Chosen Palette: Warm neutrals (alabaster/sand) with Git-style colors (Blue, Purple, Green) with thick gray-800 borders. -->
-    <!-- Application Structure Plan: Full-screen immersive UI. To completely satisfy the "Git manner" branching with curved connections, the tracks are rendered mathematically on a responsive HTML5 <canvas>. The drag interaction evaluates the mouse position against these mathematical functions (using a smooth cubic Hermite spline/smoothstep curve), allowing the user to seamlessly slide horizontally along the main track, or "tilt slightly up/down" to slide their thumb onto the curved branch tracks. Nodes are colored and labeled to exactly mimic the provided Git-graph reference image. -->
-    <!-- Visualization & Content Choices: Report Info: Historical evolution -> Goal: Inform & Explore -> Viz/Presentation Method: Interactive 2D Drag-Track (Git-style) rendered via Canvas API and DOM nodes -> Interaction: Dragging a physical thumb along mathematically constrained paths -> Justification: Translates linear history into a complex tapestry. Canvas strictly replaces SVG for all complex curved line drawing. Library/Method: Vanilla JS Pointer Events + Canvas rendering + CSS styling (NO SVG/Mermaid). -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
-
     <style>
+        .bg-image,
+        #drag-thumb,
+        .text-container,
+        .git-node,
+        .git-label-box,
+        #trackCanvas {
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+            transform-style: preserve-3d;
+        }
         :root {
-            --git-dark: #37474f; /* Thick borders like the image */
-            --git-main: #b3e5fc; /* Light blue */
-            --git-branch-up: #ce93d8; /* Purple */
-            --git-branch-down: #69f0ae; /* Green */
+            --git-dark: #37474f;
+            --git-main: #b3e5fc;
+            --git-branch-up: #ce93d8;
+            --git-branch-down: #69f0ae;
             --sand: #f4f1ea;
         }
 
@@ -33,20 +38,18 @@
             font-family: 'Lora', serif;
             background-color: var(--sand);
             overflow: hidden;
-            touch-action: none; /* Crucial for preventing scroll during drag */
+            touch-action: none;
         }
 
         h1, h2, h3, .heading-font {
             font-family: 'Cinzel', serif;
         }
 
-        /* Custom Scrollbar for the expanded text area */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: rgba(55, 71, 79, 0.05); border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: rgba(55, 71, 79, 0.3); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--git-dark); }
 
-        /* Background Images Container */
         #bg-container {
             position: fixed;
             top: 0;
@@ -64,52 +67,57 @@
             height: 100%;
             object-fit: cover;
             opacity: 0;
-            transition: opacity 1.2s ease-in-out, transform 8s linear;
-            transform: scale(1);
+            transition: opacity 0.55s ease-out, transform 1.8s ease-out;
+            transform: scale(1.01) translateZ(0);
         }
 
         .bg-image.active {
             opacity: 1;
-            transform: scale(1.05);
+            transform: scale(1.04) translateZ(0);
         }
 
-        /* Light Overlay to ensure text readability */
         .overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(244, 241, 234, 0.88);
-            backdrop-filter: blur(5px);
+            background: rgba(244, 241, 234, 0.35);
+            backdrop-filter: blur(2px);
             z-index: 2;
         }
 
-        /* Header Section */
         .header-container {
             position: absolute;
-            top: 3%;
-            left: 50%;
-            transform: translateX(-50%);
+            top: 2.5%;
+            left: 3%;
+            transform: none;
             z-index: 10;
-            text-align: center;
-            width: 90%;
-            max-width: 1000px;
+            text-align: left;
+            width: auto;
+            max-width: none;
         }
 
-        /* Custom Git-Slider Container */
+        #mainHeading {
+            margin: 0;
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--git-dark);
+        }
+
         .git-slider-wrapper {
             position: absolute;
-            top: 40%;
+            top: 39%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 90%;
-            max-width: 1200px;
-            height: 240px; /* Provides ample vertical space for S-curves */
+            width: 97%;
+            max-width: 1600px;
+            height: 310px;
             z-index: 10;
         }
 
-        /* Background Canvas for the Git track lines */
         #trackCanvas {
             position: absolute;
             top: 0;
@@ -120,11 +128,10 @@
             pointer-events: none;
         }
 
-        /* The Nodes (Ticks on the graph) */
         .git-node {
             position: absolute;
-            width: 26px;
-            height: 26px;
+            width: 24px;
+            height: 24px;
             border: 4px solid var(--git-dark);
             border-radius: 50%;
             transform: translate(-50%, -50%);
@@ -133,7 +140,7 @@
             z-index: 12;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        
+
         .git-node.main-node { background: var(--git-main); }
         .git-node.branch-up { background: var(--git-branch-up); }
         .git-node.branch-down { background: var(--git-branch-down); }
@@ -142,13 +149,12 @@
             transform: translate(-50%, -50%) scale(1.2);
         }
 
-        /* Visual Git-Style Labels (The rectangles with arrows) */
         .git-label-box {
             position: absolute;
             border: 3px solid var(--git-dark);
             padding: 4px 10px;
             font-family: monospace;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: bold;
             color: var(--git-dark);
             white-space: nowrap;
@@ -163,7 +169,7 @@
             position: absolute;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: var(--git-dark);
             font-weight: bold;
         }
@@ -172,18 +178,17 @@
         .box-up { background: var(--git-branch-up); bottom: calc(100% + 15px); }
         .box-down { background: var(--git-branch-down); top: calc(100% + 15px); }
 
-        /* The Draggable Thumb (Solid circle matching the previous style) */
         #drag-thumb {
             position: absolute;
-            width: 32px; /* Large enough to cover the 26px nodes underneath */
+            width: 32px;
             height: 32px;
-            background: var(--git-main); /* Dynamically changes in JS */
-            border: 3px solid #fff; /* Thick white border */
+            background: var(--git-main);
+            border: 3px solid #fff;
             border-radius: 50%;
             transform: translate(-50%, -50%);
             cursor: grab;
             box-shadow: 0 0 10px rgba(179, 229, 252, 0.8), 0 2px 4px rgba(0,0,0,0.3);
-            z-index: 50; /* Stays above everything */
+            z-index: 50;
             transition: transform 0.1s ease, background 0.3s ease, box-shadow 0.3s ease;
         }
 
@@ -192,14 +197,13 @@
             transform: translate(-50%, -50%) scale(1.15);
         }
 
-        /* Text Description Area (Lower Middle) */
         .text-container {
             position: absolute;
             bottom: 3%;
             left: 50%;
             transform: translateX(-50%);
-            width: 90%;
-            max-width: 950px;
+            width: 96%;
+            max-width: 1420px;
             z-index: 10;
             transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
             opacity: 1;
@@ -210,405 +214,514 @@
             transform: translateX(-50%) translateY(15px);
         }
 
-        /* Custom Card for Text */
         .info-card {
             background: rgba(255, 255, 255, 0.95);
             border-top: 5px solid var(--git-dark);
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
         }
 
-        /* Scrollable description area */
         .desc-scroll {
-            max-height: 25vh;
+            max-height: 22vh;
             overflow-y: auto;
             padding-right: 15px;
             margin-top: 10px;
             text-align: justify;
         }
 
-        @media (max-width: 768px) {
-            .desc-scroll { max-height: 32vh; }
-            .git-slider-wrapper { top: 35%; height: 160px; }
-            .header-container h1 { font-size: 2rem; }
-            .header-container p { font-size: 0.8rem; }
-            .git-label-box { font-size: 0.6rem; padding: 2px 6px; }
+        @media (max-width: 900px) {
+            .git-slider-wrapper {
+                top: 35%;
+                width: 98%;
+                height: 220px;
+            }
+
+            .git-label-box {
+                max-width: 140px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            #mainHeading {
+                font-size: 1.15rem;
+            }
+
+            .text-container {
+                width: 96%;
+                max-width: none;
+            }
+
+            .desc-scroll {
+                max-height: 27vh;
+            }
+
+            .git-node {
+                width: 20px;
+                height: 20px;
+                border-width: 3px;
+            }
         }
     </style>
 </head>
 <body>
 
-    <!-- Background Images -->
-    <div id="bg-container"></div>
+<div id="bg-container"></div>
+<div class="overlay"></div>
 
-    <!-- Light Frost Overlay -->
-    <div class="overlay"></div>
+<div class="header-container">
+    <h1 class="heading-font" id="mainHeading">Evolution of Ancient Greece</h1>
+</div>
 
-    <!-- Header Section -->
-    <div class="header-container">
-        <h1 class="text-3xl md:text-5xl font-bold tracking-widest uppercase mb-2" style="color: var(--git-dark);">
-            Evolution of Ancient Greece
-        </h1>
-        <p class="text-gray-700 text-xs md:text-sm max-w-4xl mx-auto leading-relaxed">
-            <strong>Interactive Git-Style Chronology.</strong> Drag the red ring along the primary timeline to explore extensive epoch analyses. <strong>Tilt your drag upward or downward</strong> to seamlessly slide onto the curved branches and uncover localized cultural features.
-        </p>
-    </div>
+<div class="git-slider-wrapper" id="slider-wrapper">
+    <canvas id="trackCanvas"></canvas>
+    <div id="drag-thumb"></div>
+</div>
 
-    <!-- Custom 2D Git-Slider -->
-    <div class="git-slider-wrapper" id="slider-wrapper">
-        <canvas id="trackCanvas"></canvas>
-        <!-- HTML Nodes and Labels injected via JS -->
-        <div id="drag-thumb"></div>
-    </div>
-
-    <!-- Info Panel -->
-    <div class="text-container" id="textContainer">
-        <div class="info-card rounded-2xl p-6 md:p-8">
-            <div class="flex flex-col md:flex-row md:items-start justify-between border-b pb-3 mb-2" style="border-color: rgba(55, 71, 79, 0.2);">
-                <div>
-                    <div class="flex items-center gap-3 mb-1">
-                        <span id="nodeTypeBadge" class="px-2 py-0.5 text-xs font-bold uppercase tracking-wider rounded border text-white"></span>
-                        <div class="heading-font text-lg md:text-xl font-bold text-gray-600" id="eventDate"></div>
-                    </div>
-                    <h2 class="heading-font text-2xl md:text-4xl font-bold text-gray-900" id="eventTitle"></h2>
+<div class="text-container" id="textContainer">
+    <div class="info-card rounded-2xl p-5 md:p-6">
+        <div class="flex flex-col md:flex-row md:items-start justify-between border-b pb-3 mb-2" style="border-color: rgba(55, 71, 79, 0.2);">
+            <div>
+                <div class="flex items-center gap-3 mb-1">
+                    <span id="nodeTypeBadge" class="px-2 py-0.5 text-xs font-bold uppercase tracking-wider rounded border text-white"></span>
+                    <div class="heading-font text-lg md:text-xl font-bold text-gray-600" id="eventDate"></div>
                 </div>
-                <div class="mt-3 md:mt-0 bg-gray-100 px-4 py-2 rounded-lg border border-gray-200 self-start">
-                    <span class="text-[10px] text-gray-500 uppercase tracking-wider block mb-0.5">Synthesis Focus</span>
-                    <span class="text-sm font-bold text-gray-800" id="eventFocus"></span>
-                </div>
+                <h2 class="heading-font text-2xl md:text-4xl font-bold text-gray-900" id="eventTitle"></h2>
             </div>
-            
-            <div class="desc-scroll text-gray-700 text-sm md:text-base leading-loose" id="eventDesc"></div>
+            <div class="mt-3 md:mt-0 bg-gray-100 px-4 py-2 rounded-lg border border-gray-200 self-start">
+                <span class="text-[10px] text-gray-500 uppercase tracking-wider block mb-0.5">Synthesis Focus</span>
+                <span class="text-sm font-bold text-gray-800" id="eventFocus"></span>
+            </div>
         </div>
+
+        <div class="desc-scroll text-gray-700 text-sm md:text-base leading-loose" id="eventDesc"></div>
     </div>
+</div>
 
-    <script>
-        // --- 1. DATA STRUCTURE ---
-        // Coordinates (x, y) are in percentages relative to the wrapper.
-        const nodeData = {
-            // MAIN TRUNK (y: 50%)
-            'main_1': {
-                x: 8, y: 50, type: 'main-node', label: 'Pre-Archaic', hasBox: false,
-                date: 'c. 3100–2000 BC', title: 'The Pre-Archaic Foundations', focus: 'Geographic Catalysts & Early Trade',
-                img: 'https://images.unsplash.com/photo-1555992828-ca4dbe41d294?q=80&w=2070&auto=format&fit=crop',
-                desc: `The civilization of ancient Greece represents a foundational epoch in human history, characterized by rapid socio-political evolution, extraordinary cultural achievements, and a volatile geopolitical landscape. Spanning from the early Bronze Age to its eventual absorption into the Roman Empire, the trajectory of ancient Greece is not a singular narrative, but a complex tapestry of emerging and collapsing systems. This chronological analysis divides the Hellenic timeline to offer an exhaustive examination of the shifting social structures, economic paradigms, architectural milestones, and ideological frameworks that defined the Mediterranean world. The evidence indicates that the unique geographical constraints of the Aegean—a fragmented landscape of mountainous peninsulas and scattered islands—acted as a catalyst for independent political development and maritime innovation, fundamentally distinguishing Greek development from the centralized, river-valley empires of antiquity. The genesis of Greek civilization lies in the Neolithic and early Bronze Age periods, primarily characterized by agricultural consolidation and early maritime trade networks. While classical antiquity is heavily associated with the mainland city-states, the earliest sophisticated societies in the Aegean emerged on the islands, particularly within the Cyclades and on Crete. The transition to the Bronze Age marked a fundamental shift in human organization, utilizing new metallurgy for robust maritime vessels and dictating an outward-looking economic strategy reliant on subsistence farming heavily supplemented by regional trade.`
-            },
-            'main_2': {
-                x: 23, y: 50, type: 'main-node', label: 'Minoan', hasBox: false,
-                date: 'c. 2000–1450 BC', title: 'The Minoan Palatial Period', focus: 'Thalassocracy & Command Economy',
-                img: 'https://images.unsplash.com/photo-1604620803975-d1ce499e0d19?q=80&w=2070&auto=format&fit=crop',
-                desc: `Following the foundational era, the focus of Aegean development centralized on the island of Crete, birthing Europe's first highly sophisticated civilization: the Minoans. Named retrospectively after the mythical King Minos, this society was uniquely structured around massive, architecturally complex, and unfortified palatial centers—most prominently Knossos, Phaistos, and Malia. The conspicuous absence of heavy defensive walls across these settlements suggests a specific geopolitical reality where the Minoans projected power not through terrestrial military conquest, but via an undisputed dominance over regional maritime trade routes, a system later historians termed a 'thalassocracy'. These sprawling palaces functioned as the absolute nerve centers of a highly organized command economy. They were vast redistributive hubs equipped with massive storage magazines containing pithoi (large jars) for agricultural surplus, particularly olive oil, wine, and grain, which formed the backbone of their export wealth. Culturally, Minoan artisans achieved extraordinary heights, producing vibrant frescoes that celebrated nature, marine life, and complex religious rituals such as bull-leaping, reflecting a worldview deeply integrated with their maritime environment. To manage their extensive bureaucratic and commercial networks, the Minoans developed an administrative writing system known as Linear A. Although it remains frustratingly undeciphered, its proliferation across the Aegean basin and in various trade enclaves indicates a far-reaching economic sphere of influence that seamlessly connected the burgeoning Greek world with the established, ancient empires of Egypt and the Near East.`
-            },
-            'main_3': {
-                x: 38, y: 50, type: 'main-node', label: 'Mycenaean', hasBox: false,
-                date: 'c. 1600–1100 BC', title: 'Mycenaean Domination', focus: 'Militarization & Bureaucracy',
-                img: 'https://images.unsplash.com/photo-1544833058-e70f66b0c2a9?q=80&w=2070&auto=format&fit=crop',
-                desc: `As Minoan hegemony deteriorated, a radically different socio-political structure ascended on the Greek mainland: the Mycenaean civilization. Representing the first advanced, Greek-speaking society of the mainland, the Mycenaeans stood in stark contrast to the outward-looking, mercantile Minoans. Their society was fiercely militarized, strictly hierarchical, and governed by powerful warrior-kings (the 'wanax') operating from heavily fortified, hilltop citadels such as Mycenae, Tiryns, and Pylos. The architecture of these strongholds, characterized by massive 'Cyclopean' masonry—blocks so large later Greeks believed mythological giants built them—reflects a highly fragmented, competitive, and frequently violent geopolitical landscape. Culturally and economically, the Mycenaeans absorbed, adapted, and eventually superseded numerous Minoan achievements. Most significantly, they modified the Minoan script to create Linear B, successfully deciphered in the 1950s as the earliest recorded form of the Greek language. The surviving Linear B clay tablets reveal an incredibly rigid, palace-controlled command economy where every facet of labor, agricultural yield, bronze production, and weapon stockpiling was meticulously documented and centralized by a vast scribal bureaucracy. The Mycenaeans aggressively expanded their influence, conquering Crete and establishing a militaristic trade network across the Mediterranean. It is the cultural memory of this specific era—a time of powerful kings, bronze-clad warriors, and monumental fortresses—that survived the subsequent systemic collapse and Dark Ages through oral tradition, ultimately serving as the historical and geographical foundation for Homer’s epic poems.`
-            },
-            'main_4': {
-                x: 53, y: 50, type: 'main-node', label: 'The Polis', hasBox: false,
-                date: '8th - 6th C. BC', title: 'Rise of the City-States', focus: 'Fragmentation & Colonization',
-                img: 'https://images.unsplash.com/photo-1533081682766-3d2b270ff538?q=80&w=2070&auto=format&fit=crop',
-                desc: `Emerging from the systemic collapse of the Late Bronze Age and the subsequent centuries known as the Greek Dark Ages, the Hellenic world experienced a profound structural rebirth. The defining characteristic of this new Archaic period was the emergence of the 'Polis', or city-state, as the central, autonomous political and social unit. Because the Greek mainland is heavily segmented by rugged mountain ranges and deep maritime inlets, political unification was practically impossible; geographical isolation mandated political independence. Consequently, hundreds of distinct poleis developed entirely divergent systems of government, ranging from the rigid, militaristic oligarchy of Sparta to the commercial tyrannies of Corinth and the evolving civic frameworks of Athens. Accompanying this political restructuring was a massive population boom and a critical technological shift from bronze to more accessible iron metallurgy, democratizing warfare through the creation of citizen-soldier hoplite phalanxes. As populations rapidly outgrew the limited arable land of the mainland, Greek city-states launched an unprecedented wave of overseas colonization. From the 8th century onward, Hellenic expeditions established hundreds of new, independent poleis across the Mediterranean and Black Sea coasts—from Southern Italy and Sicily (Magna Graecia) to Massalia (Marseille) and Byzantium. This immense colonial network radically expanded the Greek economic paradigm, transitioning it from localized subsistence to a complex, pan-Mediterranean trade web that facilitated the exchange of goods, coinage, and cultural ideologies.`
-            },
-            'main_5': {
-                x: 68, y: 50, type: 'main-node', label: 'Golden Age', hasBox: false,
-                date: '5th C. BC', title: 'The Golden Age of Athens', focus: 'Democracy & Imperial Hegemony',
-                img: 'https://images.unsplash.com/photo-1555921015-5532091f6026?q=80&w=2070&auto=format&fit=crop',
-                desc: `The 5th century BC marks the zenith of classical Greek civilization, an era catalyzed by the existential threat of the Greco-Persian Wars. When the massive Achaemenid Persian Empire attempted to subjugate the fragmented Greek city-states, an unprecedented, though fragile, alliance led by Athens and Sparta achieved historic, against-all-odds victories at Marathon, Salamis, and Plataea. This triumph not only preserved Greek independence but also propelled Athens into an era of unparalleled supremacy and cultural explosion. Under the leadership of the statesman Pericles, Athens weaponized the Delian League—originally a mutual defense pact against Persia—transforming it into a tribute-paying Athenian Empire maintained by absolute naval dominance. The vast wealth funneled into Athens funded an astonishing architectural and artistic renaissance, most visibly embodied in the construction of the Parthenon atop the Acropolis. Politically, this era saw the radical refinement of 'demokratia' (rule by the people), where all eligible male citizens directly debated and voted on legislation in the Assembly, creating a foundational blueprint for Western political thought. Culturally, the streets and theaters of Athens birthed the tragic and comic plays of Aeschylus, Sophocles, and Aristophanes, while pioneering philosophers like Socrates fundamentally shifted intellectual inquiry away from pure cosmology toward ethics and human morality. However, this golden era of synthesis was simultaneously a period of intense imperial hubris, ultimately leading to the devastating, decades-long Peloponnesian War against Sparta, which catastrophically weakened the entire Greek world.`
-            },
-            'main_6': {
-                x: 83, y: 50, type: 'main-node', label: 'Hellenistic', hasBox: false,
-                date: '323 - 146 BC', title: 'The Hellenistic Synthesis', focus: 'Global Integration & Decline',
-                img: 'https://images.unsplash.com/photo-1622322304918-090c885bc655?q=80&w=2070&auto=format&fit=crop',
-                desc: `The vulnerability caused by decades of internal warfare left the southern Greek city-states susceptible to conquest from the north. King Philip II of Macedon brilliantly transformed his peripheral kingdom into a military powerhouse, utilizing innovative tactics like the deep phalanx armed with long sarissa spears to subjugate and unify Greece under Macedonian hegemony. His son, Alexander the Great, utilized this unified force to launch an unprecedented campaign of conquest against the Persian Empire. Before his death at age 32, Alexander forged an empire stretching from Greece and Egypt to the borders of India. This massive territorial expansion birthed the Hellenistic Period, characterized not by the insular politics of the traditional polis, but by the sweeping integration of Greek culture (Hellenism) with ancient Eastern traditions. Following Alexander's death, his empire fractured into several massive, competing kingdoms ruled by his generals (the Diadochi), such as Ptolemaic Egypt and the Seleucid Empire. During this era, the cultural and intellectual center of gravity shifted away from Athens to new, cosmopolitan mega-cities like Alexandria and Pergamon. These urban centers hosted incredible advances in science, mathematics, and astronomy—exemplified by figures like Archimedes and Eratosthenes—supported by immense royal patronage like the Library of Alexandria. However, the continuous warfare between these Hellenistic kingdoms ultimately sapped their strength, resulting in their gradual, systematic absorption by the relentlessly expanding Roman Republic.`
-            },
+<script>
+    const nodeData = {
+        main_1: {
+            x: 6, y: 50, type: 'main-node', label: 'Foundations', hasBox: false,
+            date: 'c. 3100–2000 BC',
+            title: 'Early Bronze Age Foundations',
+            focus: 'Geography, Seafaring, and the First Aegean Networks',
+            img: './bronzeAge.jpg',
+            desc: `The earliest phase of Greek civilization took shape not as a single kingdom but as a scattered Aegean world of islands, coasts, valleys, and small farming communities. Geography mattered from the beginning. The mountains of mainland Greece discouraged the formation of one easy political center, while the surrounding sea encouraged exchange, movement, and experimentation. During the Early Bronze Age, communities in the Cyclades, Crete, and parts of the mainland began to develop stronger economic ties through maritime routes that linked them to one another and to the eastern Mediterranean. Agriculture remained the base of life, but seaborne trade in obsidian, metals, pottery, and crafted goods made the Aegean more interconnected than a map of isolated settlements might suggest. This was also the period in which metallurgy became more important, reshaping tools, weapons, and prestige objects. Burial customs, figurines, and communal tombs show that social distinctions were emerging, but power was still relatively local and community-based compared with later palace systems. What makes this era historically crucial is that it established the structural habits that would define Greek history for centuries: local independence, reliance on the sea, and a cultural world formed through contact rather than isolation. Ancient Greece did not begin as a ready-made civilization; it emerged from these early experiments in settlement, production, and exchange across a fragmented but intensely connected landscape.`
+        },
 
-            // BRANCHES (Git-style curves)
-            'branch_1': {
-                x: 18, y: 15, type: 'branch-up', label: 'Cyclades', hasBox: true,
-                date: 'c. 3000 BC', title: 'Cycladic Abstract Ideology', focus: 'Early Metaphysics',
-                img: 'https://images.unsplash.com/photo-1518002054494-3a6f94352e9d?q=80&w=1974&auto=format&fit=crop',
-                desc: `Emerging in the Aegean islands, the Cycladic culture is renowned for its strikingly minimalist, abstract marble figurines. Found predominantly in burial contexts, they hint at a widespread religious or ideological network predating formal palatial centers, representing a shared aesthetic language across the sea.`
-            },
-            'branch_2': {
-                x: 33, y: 85, type: 'branch-down', label: 'Thera', hasBox: true,
-                date: 'c. 1600 BC', title: 'The Thera Eruption', focus: 'Environmental Catastrophe',
-                img: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=2074&auto=format&fit=crop',
-                desc: `A cataclysmic volcanic eruption devastated the island of Thera (modern Santorini). The resulting massive tsunamis and thick atmospheric ash fall severely damaged Minoan coastal infrastructure and naval fleets, precipitating the civilization's eventual decline and paving the way for Mycenaean conquest.`
-            },
-            'branch_3': {
-                x: 48, y: 15, type: 'branch-up', label: 'Linear B', hasBox: true,
-                date: '1952 AD', title: 'Decipherment of Linear B', focus: 'Linguistic Breakthrough',
-                img: 'https://images.unsplash.com/photo-1590786358359-5f1ea92cc284?q=80&w=2070&auto=format&fit=crop',
-                desc: `Architect Michael Ventris successfully deciphered the Mycenaean Linear B script, stunning the academic world by proving it was an early form of Greek. This revealed that their writing was utilized almost exclusively for meticulous bureaucratic inventories rather than literature.`
-            },
-            'branch_4': {
-                x: 63, y: 85, type: 'branch-down', label: 'Olympics', hasBox: true,
-                date: '776 BC', title: 'The Panhellenic Games', focus: 'Shared Cultural Identity',
-                img: 'https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?q=80&w=2070&auto=format&fit=crop',
-                desc: `Held in Olympia in honor of Zeus, the Olympic games marked the beginning of a shared 'Panhellenic' identity. Despite living in fiercely independent and often warring city-states, Greeks united every four years under a sacred truce to compete.`
-            },
-            'branch_5': {
-                x: 78, y: 15, type: 'branch-up', label: 'Philosophy', hasBox: true,
-                date: 'c. 399 BC', title: 'The Trial of Socrates', focus: 'Ethics & Inquiry',
-                img: 'https://images.unsplash.com/photo-1600525656111-a8b41df47141?q=80&w=2070&auto=format&fit=crop',
-                desc: `Socrates revolutionized philosophy by focusing on human ethics rather than natural science. His relentless questioning of authority and Athenian norms ultimately led to his trial and execution, becoming a foundational martyr for intellectual freedom in Western thought.`
-            },
-            'branch_6': {
-                x: 93, y: 85, type: 'branch-down', label: 'Alexandria', hasBox: true,
-                date: '3rd C. BC', title: 'The Great Library', focus: 'Accumulation of Knowledge',
-                img: 'https://images.unsplash.com/photo-1614531341130-9b3600ab818d?q=80&w=2070&auto=format&fit=crop',
-                desc: `Established by the Ptolemaic dynasty in Egypt, the Library of Alexandria represented the Hellenistic ambition to collect all global knowledge. It functioned as an ancient research institute, attracting the greatest mathematicians, poets, and astronomers of the era.`
-            }
-        };
+        main_2: {
+            x: 16, y: 50, type: 'main-node', label: 'Minoan', hasBox: false,
+            date: 'c. 2000–1450 BC',
+            title: 'Minoan Crete and the Palatial Age',
+            focus: 'Redistribution, Ritual, and Maritime Supremacy',
+            img: './Minoan.jpg',
+            desc: `By about 2000 BC, Crete produced the first fully developed palatial civilization in the Greek world. The Minoans organized life around large palace centers such as Knossos, Phaistos, Malia, and Zakros. These were not simply royal residences. They were administrative, economic, ritual, and storage complexes that collected agricultural surplus, coordinated craft production, and redistributed resources. Their architecture, with central courts, storage magazines, painted rooms, and advanced building techniques, reflects a society of remarkable complexity. Minoan frescoes and luxury objects reveal strong visual sophistication, maritime confidence, and sustained contact with Egypt, Cyprus, and the Levant. Religion seems to have been deeply woven into public life, and women appear with unusual prominence in artistic and ritual contexts compared with many later mainland traditions. One of the most debated features of Minoan civilization is the relative lack of fortification at major palace sites, which suggests that naval control and insular position offered some protection or that the island’s power was projected through trade and sea power rather than fortress warfare. The Minoans also used writing, especially Linear A, although it remains undeciphered. Economically, culturally, and symbolically, Minoan Crete became the first great center of the Aegean. Its importance lies not only in its wealth, but in the model it established: centralized administration, regional coordination, monumental architecture, and a maritime outlook that turned the sea from a barrier into the main medium of civilization.`
+        },
 
-        // Smoothstep function for perfect S-curves mathematically matching the visual lines
-        function smoothstep(t) {
-            return t * t * (3 - 2 * t);
+        main_3: {
+            x: 26, y: 50, type: 'main-node', label: 'Mycenaean', hasBox: false,
+            date: 'c. 1600–1100 BC',
+            title: 'Mycenaean Greece and Warrior Kingship',
+            focus: 'Fortified Power, Bureaucracy, and Expansion',
+            img: './Mycenaean.jpg',
+            desc: `While Crete dominated the southern Aegean, a different political order emerged on the mainland. Mycenaean civilization was more militarized, more visibly hierarchical, and more fortress-centered than Minoan Crete. The major centers—Mycenae, Tiryns, Pylos, and Thebes—were built around citadels with massive defensive walls that later Greeks called Cyclopean because the stones seemed too large for ordinary builders. Their ruling structure revolved around palace authority, elite warriors, land control, and bureaucratic management. The Mycenaeans borrowed heavily from Minoan culture, but they adapted what they took into a more martial political system. Their graves contain gold masks, weapons, imported goods, and prestige items that display both wealth and status competition. A decisive development was the use of Linear B, a script adapted from the Cretan tradition but used to write an early form of Greek. The surviving tablets show a world of careful accounting: livestock, bronze, textiles, labor obligations, and offerings were recorded for administrative purposes. That evidence makes Mycenaean Greece the earliest historically documented Greek-speaking civilization. Militarily and commercially, the Mycenaeans reached well beyond the mainland and ultimately took control of Crete. They participated in wider Mediterranean exchange and may stand behind later memories preserved in epic traditions about great kings, heroic warfare, and overseas expeditions. Their importance in Greek history is double: they created the earliest palace states on the mainland, and they preserved the Greek language in written form long before the classical city-states existed.`
+        },
+
+        main_4: {
+            x: 36, y: 50, type: 'main-node', label: 'Collapse', hasBox: false,
+            date: 'c. 1200–800 BC',
+            title: 'Bronze Age Collapse and the Dark Age Transformation',
+            focus: 'Systemic Breakdown, Survival, and Reorganization',
+            img: './darkages.jpg',
+            desc: `Around 1200 BC, the interconnected palace world of the eastern Mediterranean began to unravel, and Mycenaean Greece was drawn into that wider collapse. Major centers were destroyed or abandoned, long-distance exchange contracted, population declined in many areas, and the palace bureaucracies disappeared. Because Linear B had served administrative institutions rather than a broad reading public, writing vanished together with the palace system. This is why the period that followed was long called the Greek Dark Age. Yet the phrase can mislead. It was a time of major disruption, but not of total civilizational disappearance. Communities survived, adapted, migrated, and rebuilt on a smaller scale. Political life became more local, centered on households, kin groups, and village elites instead of palace administrations. Material culture changed as well. The transition to iron gradually reduced dependence on complex bronze supply systems and altered both farming and warfare in the long run. Some regions, such as Euboea, maintained stronger overseas contacts than others, proving that the Aegean world never became completely isolated. What collapsed was not Greek culture as such, but a specific centralized Bronze Age order. This matters historically because later Greece was born from that collapse. The old palaces fell, but their disappearance opened space for new social forms, new balances of power, and eventually new political institutions. The citizen communities, alphabets, and city-states of later centuries were not continuations of the palaces. They emerged from a harder, poorer, but more flexible world that learned to reorganize itself after catastrophe.`
+        },
+
+        main_5: {
+            x: 46, y: 50, type: 'main-node', label: 'Archaic', hasBox: false,
+            date: 'c. 800–600 BC',
+            title: 'Recovery, the Polis, and Mediterranean Expansion',
+            focus: 'City-States, Colonization, and Shared Hellenic Identity',
+            img: './polis.jpg',
+            desc: `By the eighth century BC, Greek society had recovered enough to generate a new political and cultural order centered on the polis, the independent city-state. This was the real beginning of the Greece most people recognize. Instead of palace kingdoms, the Greek world now consisted of many autonomous communities with their own institutions, laws, armies, and civic identities. Geography again played a decisive role: mountains, gulfs, and islands favored political fragmentation, and that fragmentation became one of the defining features of Greek history. Yet the same period also produced stronger cultural unity. Greeks shared related dialects, common sanctuaries, similar religious practices, and expanding participation in panhellenic festivals. Overseas colonization accelerated dramatically as communities founded settlements across southern Italy, Sicily, the Black Sea, and the western Mediterranean. Colonization did not create one Greek empire; rather, it spread Greek language, trade, and civic models into a larger world while relieving local pressures and opening new commercial routes. At the same time, craft production, exchange, and aristocratic competition intensified. Sanctuaries became places where poleis displayed wealth and identity, and epic poetry helped shape a broader sense of Greekness. This was also the age in which the polis began to define belonging not simply through kinship, but through community, territory, and participation. The Archaic revival therefore matters not only because Greece recovered from the Dark Age, but because it recovered differently: more decentralized, more outward-looking, and more politically inventive than the Bronze Age world that had preceded it.`
+        },
+
+        main_6: {
+            x: 56, y: 50, type: 'main-node', label: 'Reforms', hasBox: false,
+            date: 'c. 600–480 BC',
+            title: 'Reform, Tyranny, and the Road to Democracy',
+            focus: 'Class Conflict, Law, and Political Experimentation',
+            img: './sphinx.jpg',
+            desc: `The later Archaic period was one of the most politically experimental phases in Greek history. Economic growth, wider trade, and the increasing role of hoplite infantry began to challenge older aristocratic monopolies. Power could no longer rest only on noble birth when more citizens contributed to warfare, production, and the public life of the community. Across the Greek world, poleis responded in different ways. Some experienced tyranny, which in the ancient Greek sense meant rule seized outside traditional constitutional channels. Tyrants could be harsh, but they were not all identical, and in several cities they weakened aristocratic factions, supported public works, and altered the balance of power. Athens followed one of the most important trajectories. The harsh law code associated with Draco showed the severity of internal tensions. Solon then attempted reform by addressing debt slavery, reordering political access through property classes, and opening more space for civic participation. Later, Cleisthenes reorganized the citizen body in a way that cut across old kinship blocs and laid the institutional foundations of Athenian democracy. During the same broad period, rational inquiry expanded in the Greek world. Thinkers in Ionia and elsewhere began to ask what the universe was made of, how order could be explained, and whether nature followed principles discoverable by reason. This era therefore changed Greece in two linked ways: politically, it widened the range of who could claim a role in the state; intellectually, it widened the range of questions humans could ask about law, nature, and justice.`
+        },
+
+        main_7: {
+            x: 66, y: 50, type: 'main-node', label: 'Classical', hasBox: false,
+            date: '480–431 BC',
+            title: 'Persian Wars and the Classical High Point',
+            focus: 'Collective Defense, Athenian Power, and Cultural Brilliance',
+            img: './persian.jpeg',
+            desc: `The defeat of the Persian invasions transformed the Greek world. For the first time, many poleis confronted a vast imperial power in a struggle that later Greeks interpreted as a defense of autonomy against domination. The victories at Marathon, Salamis, and Plataea did not erase rivalry among the city-states, but they produced enormous cultural confidence and political consequence. Athens emerged from the wars with unmatched naval prestige and used the Delian League, originally an anti-Persian alliance, to construct an empire of tribute-paying allies. That imperial revenue funded fleets, public pay, temples, monuments, and the civic institutions that made fifth-century Athens so influential. Under Pericles and his contemporaries, Athenian democracy deepened, though it remained limited to male citizens. The cultural output of this age was extraordinary. Tragedy and comedy became major civic art forms; sculpture and architecture reached new standards of proportion and clarity; and philosophers pushed ethical and political thought in new directions. The Parthenon, the theater, and the civic assembly all embodied a civilization intensely invested in public display, debate, and collective identity. Yet this was not a peaceful golden shell floating above history. The same Athens that generated drama, philosophy, and monumental architecture also imposed tribute, suppressed revolts, and exercised coercive empire. The Classical high point therefore deserves to be understood as a synthesis of freedom and domination, civic creativity and strategic power. It was brilliant because its institutions and culture were so ambitious, but it also carried within itself the tensions that would soon tear the Greek world apart.`
+        },
+
+        main_8: {
+            x: 76, y: 50, type: 'main-node', label: 'Conflict', hasBox: false,
+            date: '431–359 BC',
+            title: 'Peloponnesian War and the Fracturing of Greece',
+            focus: 'Attrition, Rivalry, and Exhausted Independence',
+            img: './Peloponnesian.jpeg',
+            desc: `The Peloponnesian War shattered the political balance of the Greek world. What had once been a rivalry between two powerful blocs—Athens and its maritime empire, Sparta and its land-based alliance—became a drawn-out struggle that consumed lives, wealth, and trust across the Aegean. The war also changed the character of conflict itself. Greek warfare was no longer a matter of limited seasonal clashes between neighboring hoplite armies. It now involved naval campaigning, sieges, civil strife inside allied cities, shifting diplomacy, and mass suffering among civilians. Athens endured plague, political turmoil, and strategic overreach; Sparta eventually adapted, built naval power with Persian financial support, and forced Athens to surrender. Yet Spartan victory did not restore stability. Sparta lacked the demographic and institutional flexibility to dominate the Greek world for long, and the following decades saw new struggles involving Thebes, Persia, shifting coalitions, and further exhaustion. The result was not a single decisive replacement of one hegemon by another, but the weakening of the entire city-state system. The classical polis remained culturally vibrant, but strategically vulnerable. This period matters because it marks the end of the idea that the major Greek powers could preserve their independence through endless internal competition. The Greek world still produced commanders, thinkers, and statesmen, but its energies were increasingly spent against itself. By the mid-fourth century BC, the city-states that had once defined Greek political life were divided enough that a strong outsider from the north could enter not merely as a raider, but as the new master of Greece.`
+        },
+
+        main_9: {
+            x: 86, y: 50, type: 'main-node', label: 'Macedon', hasBox: false,
+            date: '359–323 BC',
+            title: 'Philip II, Alexander, and the End of the Old Polis Order',
+            focus: 'Military Innovation, Unification, and Conquest',
+            img: './alexander.jpg',
+            desc: `The rise of Macedon ended the centuries-long age in which the southern city-states controlled the political destiny of the Greek world. Philip II transformed Macedon from a vulnerable kingdom into a disciplined military power through reorganization, diplomacy, and relentless campaigning. His innovations included the development of a more flexible combined-arms army, especially the Macedonian phalanx equipped with the long sarissa, supported by cavalry and siege capabilities. Philip also understood that money, marriage alliances, and political manipulation were as important as battlefield success. His victory at Chaeronea in 338 BC decisively broke effective Greek resistance and established Macedonian hegemony. Yet Philip did not simply destroy Greek institutions; he repositioned them beneath a larger royal framework and projected their energies toward Persia. Alexander inherited that framework and turned it into a world empire. In little more than a decade he destroyed the Achaemenid Empire, marched through Asia Minor, Egypt, Mesopotamia, Persia, and into parts of Central and South Asia, and founded or refounded cities that helped carry Greek language and institutions far beyond the Aegean. Alexander’s significance lies not only in conquest. He changed scale. Greek history ceased to be primarily the story of rival poleis and became the story of kingdoms, imperial courts, and transregional exchange. The old city-state was not instantly erased, but it was permanently displaced from the center of power. Macedon did what no polis had managed: it unified Greece politically enough to push outward and redraw the map of the eastern Mediterranean and Near East.`
+        },
+
+        main_10: {
+            x: 94, y: 50, type: 'main-node', label: 'Hellenistic-Roman', hasBox: false,
+            date: '323 BC onward',
+            title: 'Hellenistic Kingdoms and the Greco-Roman Synthesis',
+            focus: 'Cosmopolitanism, Knowledge, and Cultural Survival',
+            img: './hellenism.jpg',
+            desc: `Alexander’s death in 323 BC left no stable succession, and his empire fragmented into competing kingdoms ruled by his generals and their dynasties. The result was the Hellenistic world: not a unified empire, but a vast zone in which Greek language, institutions, art, and education circulated through royal courts and newly enlarged cities such as Alexandria, Antioch, and Pergamon. This was a major transformation in scale and mentality. The political center shifted away from the small autonomous polis toward large bureaucratic monarchies. At the same time, Greek culture became more international than ever before. Science, mathematics, geography, and literary scholarship flourished under royal patronage; philosophy increasingly addressed the individual’s place in a large and unstable world. The Hellenistic age also produced new artistic styles that were more emotional, dramatic, and diverse than the restrained balance associated with the Classical era. Over time, however, the rival kingdoms weakened each other and fell under the expanding influence of Rome. The Roman conquest of Greece did not erase Greek civilization. Instead, it produced one of history’s most influential cultural syntheses. Greek language, philosophy, education, religion, art, and architectural forms deeply shaped Roman elite culture, while Roman administration, infrastructure, and imperial organization provided the political frame through which Hellenic traditions endured. This final stage is therefore not a simple ending. It is the mechanism by which Greek civilization outlived Greek political independence. Through Rome, the Greek world entered a second life, preserving and transmitting ideas that would shape later Europe, Byzantium, and much of the Mediterranean intellectual tradition.`
+        },
+
+        branch_1:
+            { x: 11.5, y: 15, type: 'branch-up', label: 'Cyclades', hasBox: true,
+            date: '3rd millennium BC',
+            title: 'Cycladic Marble Figurines',
+            focus: 'Shared Symbolism Across the Islands',
+            img: './cycladic.jpg',
+            desc: `The Cycladic islands produced highly distinctive marble figurines, many found in burials. Their reduced, geometric forms suggest a shared symbolic language long before the classical period. They show that even early Aegean communities already participated in cultural exchange networks that crossed the sea and linked otherwise small island societies.`
+        },
+
+        branch_2:
+            { x: 22.5, y: 85, type: 'branch-down', label: 'Knossos', hasBox: true,
+            date: 'c. 1900 BC onward',
+            title: 'The Palace of Knossos',
+            focus: 'Administrative and Ritual Center',
+            img: './Knossos.jpg',
+            desc: `Knossos became the best-known Minoan palace center. Its storage magazines, courts, painted rooms, and administrative character show how Cretan power worked through redistribution and ceremony rather than through a single visible throne-centered monarchy in the later mainland sense.`
+        },
+
+        branch_3:
+            { x: 32.5, y: 15, type: 'branch-up', label: 'Thera', hasBox: true,
+            date: 'Late 17th–16th c. BC',
+            title: 'The Thera Eruption',
+            focus: 'Aegean Environmental Shock',
+            img: './thera.jpeg',
+            desc: `The volcanic eruption on Thera was one of the great natural disasters of the ancient Mediterranean. It likely disrupted trade and damaged regional systems, though historians still debate exactly how directly it contributed to the weakening of Minoan power.`
+        },
+
+        branch_4:
+            { x: 43.5, y: 85, type: 'branch-down', label: 'Lefkandi', hasBox: true,
+            date: 'c. 10th c. BC',
+            title: 'Lefkandi and Dark Age Continuity',
+            focus: 'Wealth After Collapse',
+            img: './Lefkandi.jpg',
+            desc: `The site of Lefkandi on Euboea shows that the so-called Dark Age was not uniform decline everywhere. Monumental burial, imported goods, and evidence of overseas contacts reveal that some communities preserved wealth and long-distance connections even after palace society collapsed.`
+        },
+
+        branch_5:
+            { x: 54.5, y: 15, type: 'branch-up', label: 'Alphabet', hasBox: true,
+            date: 'c. 8th c. BC',
+            title: 'Adoption of the Greek Alphabet',
+            focus: 'Literacy Beyond Bureaucracy',
+            img: './alphabet.jpg',
+            desc: `The Greek adoption and adaptation of the Phoenician alphabet was revolutionary because it made writing flexible and widely usable. Unlike Linear B, which had served palace administration, alphabetic writing could record poetry, dedications, law, and public communication.`
+        },
+
+        branch_6:
+            { x: 65.5, y: 85, type: 'branch-down', label: 'Olympia', hasBox: true,
+            date: '776 BC',
+            title: 'The First Secure Olympic Date',
+            focus: 'Panhellenic Identity',
+            img: './firstolympics.jpg',
+            desc: `The first securely remembered Olympic date, 776 BC, became a major chronological marker for the Greek world. The games created a sacred meeting point where rival city-states temporarily suspended conflict and expressed a wider Hellenic identity through competition and ritual.`
+        },
+
+        branch_7:
+            { x: 76.5, y: 15, type: 'branch-up', label: 'Cleisthenes', hasBox: true,
+            date: '508–507 BC',
+            title: 'Democratic Reorganization in Athens',
+            focus: 'Citizenship Reframed',
+            img: './Cleisthenes.jpg',
+            desc: `Cleisthenes reorganized the Athenian citizen body in a way that weakened old aristocratic power blocs. His reforms are widely treated as the institutional foundation of Athenian democracy because they tied political participation more strongly to civic structure than to clan privilege.`
+        },
+
+        branch_8:
+            { x: 85.5, y: 85, type: 'branch-down', label: 'Socrates', hasBox: true,
+            date: '399 BC',
+            title: 'The Trial of Socrates',
+            focus: 'Ethics, Critique, and Civic Anxiety',
+            img: './socrates.jpeg',
+            desc: `Socrates’ execution became one of the defining moments in Greek intellectual history. By turning philosophy toward ethical questioning, public reasoning, and critique of assumption, he shaped later thought through Plato and beyond, even though Athens condemned him.`
+        },
+
+        branch_9:
+            { x: 92.5, y: 15, type: 'branch-up', label: 'Chaeronea', hasBox: true,
+            date: '338 BC',
+            title: 'Battle of Chaeronea',
+            focus: 'Macedonian Supremacy',
+            img: './Battle of Chaeronea.png',
+            desc: `Philip II’s victory at Chaeronea over Athens and Thebes ended effective military resistance to Macedonian domination in mainland Greece. It marks the turning point at which the independent polis ceased to be the highest political force in the Greek world.`
+        },
+
+        branch_10:
+            { x: 96.5, y: 85, type: 'branch-down', label: 'Alexandria', hasBox: true,
+            date: '3rd c. BC',
+            title: 'The Library of Alexandria',
+            focus: 'Knowledge on an Imperial Scale',
+            img: './alexandria.jpeg',
+            desc: `Under the Ptolemies, Alexandria became a leading center of scholarship. Its library and research culture symbolize the Hellenistic shift from local civic identity to cosmopolitan knowledge networks supported by powerful monarchies and connected urban institutions.`
+        },
+
+        branch_11:
+            { x: 90.5, y: 85, type: 'branch-down', label: 'Corinth', hasBox: true,
+            date: '146 BC',
+            title: 'Roman Destruction of Corinth',
+            focus: 'Political Independence Ends',
+            img: './Corinth.jpg',
+            desc: `The Roman destruction of Corinth in 146 BC stands as a stark symbol of the end of Greek political independence. Yet it also begins the paradoxical Roman phase in which Greek culture increasingly shaped the conqueror.`
         }
+    };
 
-        // Define Mathematical Tracks. `getY(x)` returns the Y-coordinate for a given X.
-        const tracks = [
-            { id: 'main', xMin: 5, xMax: 88, getY: (x) => 50 },
-            
-            // Branch Up Curves (Start Main -> Curve -> Straight)
-            { id: 'b1', xMin: 8, xMax: 20, getY: (x) => x < 15 ? 50 - 35 * smoothstep((x-8)/7) : 15 },
-            { id: 'b3', xMin: 38, xMax: 50, getY: (x) => x < 45 ? 50 - 35 * smoothstep((x-38)/7) : 15 },
-            { id: 'b5', xMin: 68, xMax: 80, getY: (x) => x < 75 ? 50 - 35 * smoothstep((x-68)/7) : 15 },
-            
-            // Branch Down Curves
-            { id: 'b2', xMin: 23, xMax: 35, getY: (x) => x < 30 ? 50 + 35 * smoothstep((x-23)/7) : 85 },
-            { id: 'b4', xMin: 53, xMax: 65, getY: (x) => x < 60 ? 50 + 35 * smoothstep((x-53)/7) : 85 },
-            { id: 'b6', xMin: 83, xMax: 95, getY: (x) => x < 90 ? 50 + 35 * smoothstep((x-83)/7) : 85 }
-        ];
+    function smoothstep(t) {
+        return t * t * (3 - 2 * t);
+    }
 
-        // --- 2. RENDERING LOGIC ---
-        
-        const sliderWrapper = document.getElementById('slider-wrapper');
-        const bgContainer = document.getElementById('bg-container');
-        const thumb = document.getElementById('drag-thumb');
-        const canvas = document.getElementById('trackCanvas');
-        const ctx = canvas.getContext('2d');
-        let activeNodeId = null;
+    const tracks = [
+        { id: 'main', xMin: 5, xMax: 94.5, getY: (x) => 50 },
 
-        function initUI() {
-            // Backgrounds
-            Object.keys(nodeData).forEach(id => {
-                const img = document.createElement('img');
-                img.src = nodeData[id].img;
-                img.className = 'bg-image';
-                img.id = `bg-${id}`;
-                bgContainer.appendChild(img);
-            });
+        { id: 'b1',  xMin: 6,  xMax: 11.5, getY: (x) => x < 9.5  ? 50 - 35 * smoothstep((x - 6)  / 3.5) : 15 },
+        { id: 'b2',  xMin: 16, xMax: 22.5, getY: (x) => x < 19.5 ? 50 + 35 * smoothstep((x - 16) / 3.5) : 85 },
+        { id: 'b3',  xMin: 26, xMax: 32.5, getY: (x) => x < 29.5 ? 50 - 35 * smoothstep((x - 26) / 3.5) : 15 },
+        { id: 'b4',  xMin: 36, xMax: 43.5, getY: (x) => x < 39.5 ? 50 + 35 * smoothstep((x - 36) / 3.5) : 85 },
+        { id: 'b5',  xMin: 46, xMax: 54.5, getY: (x) => x < 50   ? 50 - 35 * smoothstep((x - 46) / 4.0) : 15 },
+        { id: 'b6',  xMin: 56, xMax: 65.5, getY: (x) => x < 60   ? 50 + 35 * smoothstep((x - 56) / 4.0) : 85 },
+        { id: 'b7',  xMin: 66, xMax: 76.5, getY: (x) => x < 70   ? 50 - 35 * smoothstep((x - 66) / 4.0) : 15 },
+        { id: 'b8',  xMin: 76, xMax: 85.5, getY: (x) => x < 80   ? 50 + 35 * smoothstep((x - 76) / 4.0) : 85 },
+        { id: 'b9',  xMin: 86, xMax: 92.5, getY: (x) => x < 89.5 ? 50 - 35 * smoothstep((x - 86) / 3.5) : 15 },
+        { id: 'b11', xMin: 86, xMax: 90.5, getY: (x) => x < 89 ? 50 + 35 * smoothstep((x - 86) / 3.0) : 85 },
+        { id: 'b10', xMin: 94, xMax: 96.5, getY: (x) => x < 95.5 ? 50 + 35 * smoothstep((x - 94) / 1.5) : 85 }
+    ];
 
-            // Nodes & Labels
-            Object.keys(nodeData).forEach(id => {
-                const node = nodeData[id];
-                
-                // The circular node
-                const dot = document.createElement('div');
-                dot.className = `git-node ${node.type}`;
-                dot.id = `node-${id}`;
-                dot.style.left = `${node.x}%`;
-                dot.style.top = `${node.y}%`;
-                dot.addEventListener('click', () => snapToNode(id));
-                sliderWrapper.appendChild(dot);
+    const sliderWrapper = document.getElementById('slider-wrapper');
+    const bgContainer = document.getElementById('bg-container');
+    const thumb = document.getElementById('drag-thumb');
+    const canvas = document.getElementById('trackCanvas');
+    const ctx = canvas.getContext('2d');
+    let activeNodeId = null;
 
-                // The Git-style label box with arrow
-                if (node.hasBox) {
-                    const labelBox = document.createElement('div');
-                    let boxClass = '';
-                    let arrowHTML = '';
+    function initUI() {
+        Object.keys(nodeData).forEach(id => {
+            const img = document.createElement('img');
+            img.src = nodeData[id].img;
+            img.className = 'bg-image';
+            img.id = `bg-${id}`;
+            img.alt = nodeData[id].title;
+            bgContainer.appendChild(img);
+        });
 
-                    if (node.type === 'main-node') {
-                        boxClass = 'box-main';
-                        arrowHTML = `<div class="git-label-arrow" style="top: 100%; margin-top: -2px;">&#8595;</div>`;
-                    } else if (node.type === 'branch-up') {
-                        boxClass = 'box-up';
-                        arrowHTML = `<div class="git-label-arrow" style="top: 100%; margin-top: -2px;">&#8595;</div>`;
-                    } else {
-                        boxClass = 'box-down';
-                        arrowHTML = `<div class="git-label-arrow" style="bottom: 100%; margin-bottom: -2px;">&#8593;</div>`;
-                    }
-
-                    labelBox.className = `git-label-box ${boxClass}`;
-                    labelBox.style.left = `${node.x}%`;
-                    labelBox.innerHTML = `${node.label} ${arrowHTML}`;
-                    sliderWrapper.appendChild(labelBox);
-                }
-            });
-
-            // Resize canvas and draw lines
-            window.addEventListener('resize', drawCanvasPaths);
-            drawCanvasPaths();
-
-            // Start at first node
-            snapToNode('main_1');
-        }
-
-        // Draw perfect Git curved tracks matching mathematical functions
-        function drawCanvasPaths() {
-            const rect = sliderWrapper.getBoundingClientRect();
-            // Handle high DPI displays
-            canvas.width = rect.width * window.devicePixelRatio;
-            canvas.height = rect.height * window.devicePixelRatio;
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-
-            ctx.clearRect(0, 0, rect.width, rect.height);
-            ctx.strokeStyle = '#37474f'; // var(--git-dark)
-            ctx.lineWidth = 6;
-            ctx.lineJoin = 'round';
-            ctx.lineCap = 'round';
-
-            tracks.forEach(track => {
-                ctx.beginPath();
-                // Step by 0.5% for smooth resolution
-                for (let x = track.xMin; x <= track.xMax; x += 0.5) {
-                    let y = track.getY(x);
-                    let px = (x / 100) * rect.width;
-                    let py = (y / 100) * rect.height;
-                    
-                    if (x === track.xMin) ctx.moveTo(px, py);
-                    else ctx.lineTo(px, py);
-                }
-                ctx.stroke();
-            });
-        }
-
-        function snapToNode(id) {
+        Object.keys(nodeData).forEach(id => {
             const node = nodeData[id];
-            thumb.style.left = `${node.x}%`;
-            thumb.style.top = `${node.y}%`;
-            activateContent(id);
-        }
 
-        // --- 3. DRAG MATHEMATICS & INTERACTIONS ---
-        
-        let isDragging = false;
+            const dot = document.createElement('div');
+            dot.className = `git-node ${node.type}`;
+            dot.id = `node-${id}`;
+            dot.style.left = `${node.x}%`;
+            dot.style.top = `${node.y}%`;
+            dot.addEventListener('click', () => snapToNode(id));
+            sliderWrapper.appendChild(dot);
 
-        // Find the absolute closest point mathematically on the defined curves
-        function getClosestTrackPosition(mouseX, mouseY) {
-            let bestDist = Infinity;
-            let bestX = 8, bestY = 50;
+            if (node.hasBox) {
+                const labelBox = document.createElement('div');
+                let boxClass = '';
+                let arrowHTML = '';
 
-            tracks.forEach(track => {
-                // Clamp mouseX to the track's valid domain
-                let clampedX = Math.max(track.xMin, Math.min(track.xMax, mouseX));
-                let trackY = track.getY(clampedX);
-                
-                let dx = mouseX - clampedX;
-                let dy = mouseY - trackY;
-                let dist = Math.sqrt(dx*dx + dy*dy);
-                
-                if (dist < bestDist) {
-                    bestDist = dist;
-                    bestX = clampedX;
-                    bestY = trackY;
+                if (node.type === 'main-node') {
+                    boxClass = 'box-main';
+                    arrowHTML = `<div class="git-label-arrow" style="top: 100%; margin-top: -2px;">&#8595;</div>`;
+                } else if (node.type === 'branch-up') {
+                    boxClass = 'box-up';
+                    arrowHTML = `<div class="git-label-arrow" style="top: 100%; margin-top: -2px;">&#8595;</div>`;
+                } else {
+                    boxClass = 'box-down';
+                    arrowHTML = `<div class="git-label-arrow" style="bottom: 100%; margin-bottom: -2px;">&#8593;</div>`;
                 }
-            });
-            return { x: bestX, y: bestY };
-        }
 
-        // Auto-activate nodes if we drag near them
-        function checkProximityToNodes(px, py) {
-            let closestId = activeNodeId;
-            let minDist = Infinity;
-
-            Object.keys(nodeData).forEach(id => {
-                const node = nodeData[id];
-                const dist = Math.sqrt(Math.pow(px - node.x, 2) + Math.pow(py - node.y, 2));
-                if (dist < minDist) {
-                    minDist = dist;
-                    closestId = id;
-                }
-            });
-
-            // If within a 3% radius, trigger content update
-            if (minDist < 3 && closestId !== activeNodeId) {
-                activateContent(closestId);
+                labelBox.className = `git-label-box ${boxClass}`;
+                labelBox.style.left = `${node.x}%`;
+                labelBox.innerHTML = `${node.label} ${arrowHTML}`;
+                sliderWrapper.appendChild(labelBox);
             }
-            return closestId;
+        });
+
+        window.addEventListener('resize', drawCanvasPaths);
+        drawCanvasPaths();
+        snapToNode('main_1');
+    }
+
+    function drawCanvasPaths() {
+        const rect = sliderWrapper.getBoundingClientRect();
+        canvas.width = rect.width * window.devicePixelRatio;
+        canvas.height = rect.height * window.devicePixelRatio;
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        ctx.strokeStyle = '#37474f';
+        ctx.lineWidth = 6;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        tracks.forEach(track => {
+            ctx.beginPath();
+            for (let x = track.xMin; x <= track.xMax; x += 0.2) {
+                const y = track.getY(x);
+                const px = (x / 100) * rect.width;
+                const py = (y / 100) * rect.height;
+
+                if (x === track.xMin) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+        });
+    }
+
+    function snapToNode(id) {
+        const node = nodeData[id];
+        thumb.style.left = `${node.x}%`;
+        thumb.style.top = `${node.y}%`;
+        activateContent(id);
+    }
+
+    let isDragging = false;
+
+    function getClosestTrackPosition(mouseX, mouseY) {
+        let bestDist = Infinity;
+        let bestX = 5, bestY = 50;
+
+        tracks.forEach(track => {
+            const clampedX = Math.max(track.xMin, Math.min(track.xMax, mouseX));
+            const trackY = track.getY(clampedX);
+
+            const dx = mouseX - clampedX;
+            const dy = mouseY - trackY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestX = clampedX;
+                bestY = trackY;
+            }
+        });
+
+        return { x: bestX, y: bestY };
+    }
+
+    function checkProximityToNodes(px, py) {
+        let closestId = activeNodeId;
+        let minDist = Infinity;
+
+        Object.keys(nodeData).forEach(id => {
+            const node = nodeData[id];
+            const dist = Math.sqrt(Math.pow(px - node.x, 2) + Math.pow(py - node.y, 2));
+            if (dist < minDist) {
+                minDist = dist;
+                closestId = id;
+            }
+        });
+
+        if (minDist < 2.8 && closestId !== activeNodeId) {
+            activateContent(closestId);
         }
+        return closestId;
+    }
 
-        // Pointer Events for Dragging
-        thumb.addEventListener('pointerdown', (e) => {
-            isDragging = true;
-            thumb.style.transition = 'none'; // Instant tracking while dragged
-            thumb.setPointerCapture(e.pointerId);
-            e.preventDefault();
+    thumb.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        thumb.style.transition = 'none';
+        thumb.setPointerCapture(e.pointerId);
+        e.preventDefault();
+    });
+
+    thumb.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+
+        const rect = sliderWrapper.getBoundingClientRect();
+        const mouseX = ((e.clientX - rect.left) / rect.width) * 100;
+        const mouseY = ((e.clientY - rect.top) / rect.height) * 100;
+
+        const constrainedPos = getClosestTrackPosition(mouseX, mouseY);
+
+        thumb.style.left = `${constrainedPos.x}%`;
+        thumb.style.top = `${constrainedPos.y}%`;
+
+        checkProximityToNodes(constrainedPos.x, constrainedPos.y);
+    });
+
+    thumb.addEventListener('pointerup', (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        thumb.style.transition = 'transform 0.1s ease, left 0.3s ease, top 0.3s ease';
+        thumb.releasePointerCapture(e.pointerId);
+
+        const px = parseFloat(thumb.style.left);
+        const py = parseFloat(thumb.style.top);
+
+        let closestId = activeNodeId;
+        let minDist = Infinity;
+
+        Object.keys(nodeData).forEach(id => {
+            const node = nodeData[id];
+            const dist = Math.sqrt(Math.pow(px - node.x, 2) + Math.pow(py - node.y, 2));
+            if (dist < minDist) {
+                minDist = dist;
+                closestId = id;
+            }
         });
 
-        thumb.addEventListener('pointermove', (e) => {
-            if (!isDragging) return;
-            
-            const rect = sliderWrapper.getBoundingClientRect();
-            let mouseX = ((e.clientX - rect.left) / rect.width) * 100;
-            let mouseY = ((e.clientY - rect.top) / rect.height) * 100;
+        snapToNode(closestId);
+    });
 
-            // Mathematical constraint ensures thumb perfectly follows the S-curves
-            let constrainedPos = getClosestTrackPosition(mouseX, mouseY);
+    function activateContent(id) {
+        if (activeNodeId === id) return;
 
-            thumb.style.left = `${constrainedPos.x}%`;
-            thumb.style.top = `${constrainedPos.y}%`;
+        const oldBg = activeNodeId ? document.getElementById(`bg-${activeNodeId}`) : null;
+        const newBg = document.getElementById(`bg-${id}`);
+        const tc = document.getElementById('textContainer');
+        const data = nodeData[id];
 
-            checkProximityToNodes(constrainedPos.x, constrainedPos.y);
-        });
+        if (oldBg) oldBg.classList.remove('active');
+        newBg.classList.add('active');
 
-        thumb.addEventListener('pointerup', (e) => {
-            if (!isDragging) return;
-            isDragging = false;
-            thumb.style.transition = 'transform 0.1s ease, left 0.3s ease, top 0.3s ease'; 
-            thumb.releasePointerCapture(e.pointerId);
+        tc.classList.add('fading');
 
-            // On release, snap to closest node
-            const px = parseFloat(thumb.style.left);
-            const py = parseFloat(thumb.style.top);
-            let closestId = activeNodeId;
-            let minDist = Infinity;
-            Object.keys(nodeData).forEach(id => {
-                const node = nodeData[id];
-                const dist = Math.sqrt(Math.pow(px - node.x, 2) + Math.pow(py - node.y, 2));
-                if (dist < minDist) { minDist = dist; closestId = id; }
-            });
-            snapToNode(closestId);
-        });
-
-        // --- 4. CONTENT UPDATES ---
-
-        function activateContent(id) {
-            if (activeNodeId === id) return;
-            
-            // Visual Background crossfade
-            if (activeNodeId) document.getElementById(`bg-${activeNodeId}`).classList.remove('active');
-            document.getElementById(`bg-${id}`).classList.add('active');
-
-            // Text Panel Update
-            const tc = document.getElementById('textContainer');
-            const data = nodeData[id];
-            
-            tc.classList.add('fading');
-            
-            setTimeout(() => {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
                 document.getElementById('eventDate').innerText = data.date;
                 document.getElementById('eventTitle').innerText = data.title;
                 document.getElementById('eventFocus').innerText = data.focus;
                 document.getElementById('eventDesc').innerHTML = data.desc;
-                
+
                 const badge = document.getElementById('nodeTypeBadge');
-                if(data.type === 'main-node') {
+
+                if (data.type === 'main-node') {
                     badge.innerText = 'Master Branch';
                     badge.style.backgroundColor = 'var(--git-main)';
                     badge.style.color = 'var(--git-dark)';
                     badge.style.borderColor = 'var(--git-dark)';
-                    // Update Thumb Color to match node
                     thumb.style.background = 'var(--git-main)';
                     thumb.style.boxShadow = '0 0 10px rgba(179, 229, 252, 0.8), 0 2px 4px rgba(0,0,0,0.3)';
-                } else if(data.type === 'branch-up') {
+                } else if (data.type === 'branch-up') {
                     badge.innerText = 'Feature Branch';
                     badge.style.backgroundColor = 'var(--git-branch-up)';
                     badge.style.color = 'var(--git-dark)';
                     badge.style.borderColor = 'var(--git-dark)';
-                    // Update Thumb Color to match node
                     thumb.style.background = 'var(--git-branch-up)';
                     thumb.style.boxShadow = '0 0 10px rgba(206, 147, 216, 0.8), 0 2px 4px rgba(0,0,0,0.3)';
                 } else {
@@ -616,21 +729,19 @@
                     badge.style.backgroundColor = 'var(--git-branch-down)';
                     badge.style.color = 'var(--git-dark)';
                     badge.style.borderColor = 'var(--git-dark)';
-                    // Update Thumb Color to match node
                     thumb.style.background = 'var(--git-branch-down)';
                     thumb.style.boxShadow = '0 0 10px rgba(105, 240, 174, 0.8), 0 2px 4px rgba(0,0,0,0.3)';
                 }
-                
+
                 document.querySelector('.desc-scroll').scrollTop = 0;
                 tc.classList.remove('fading');
-            }, 300); // Sync with CSS transition
+            });
+        });
 
-            activeNodeId = id;
-        }
+        activeNodeId = id;
+    }
 
-        // Boot
-        initUI();
-
-    </script>
+    initUI();
+</script>
 </body>
 </html>
